@@ -1,0 +1,319 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Night Watch - Power System</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #17251d, #050706 65%);
+    color: #d9ffe1;
+    font-family: "Courier New", monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.panel {
+    width: 100%;
+    max-width: 440px;
+    background: #0b100d;
+    border: 2px solid #34483a;
+    border-radius: 12px;
+    padding: 26px;
+    box-shadow: 0 0 30px #00ff3320;
+    text-align: center;
+}
+
+h1 {
+    font-size: 25px;
+    letter-spacing: 4px;
+    color: #77ff91;
+}
+
+.subtitle {
+    color: #718577;
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+
+.screen {
+    margin: 25px 0;
+    padding: 18px;
+    border: 1px solid #304536;
+    background: #050806;
+}
+
+.status {
+    font-size: 13px;
+    color: #83ff9a;
+    margin-bottom: 18px;
+}
+
+.percentage {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.bar {
+    width: 100%;
+    height: 22px;
+    border: 2px solid #48604d;
+    padding: 3px;
+}
+
+.fill {
+    height: 100%;
+    width: 100%;
+    background: #38ed66;
+    transition: width 0.2s linear;
+}
+
+.info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #91a397;
+    margin-top: 12px;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    margin: 6px 0;
+    border: 1px solid #42784d;
+    background: #14281a;
+    color: #aaffb8;
+    font-family: inherit;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover:not(:disabled) {
+    background: #23482d;
+}
+
+button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.pause {
+    background: #252b18;
+    border-color: #77753d;
+    color: #fff4a0;
+}
+
+.reset {
+    background: #211212;
+    border-color: #743737;
+    color: #ffaaaa;
+}
+
+.warning {
+    color: #ff5252 !important;
+    animation: blink 0.8s infinite alternate;
+}
+
+.cooldown {
+    color: #ff6464;
+}
+
+@keyframes blink {
+    from { opacity: 1; }
+    to { opacity: 0.45; }
+}
+
+.footer {
+    margin-top: 20px;
+    color: #526456;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+</style>
+</head>
+
+<body>
+<div class="panel">
+    <h1>NIGHT WATCH</h1>
+    <div class="subtitle">SECURITY POWER MANAGEMENT</div>
+
+    <div class="screen">
+        <div class="status" id="status">SYSTEM STANDBY</div>
+
+        <div class="percentage" id="percentage">100%</div>
+
+        <div class="bar">
+            <div class="fill" id="fill"></div>
+        </div>
+
+        <div class="info">
+            <span>POWER</span>
+            <span id="powerState">FULL</span>
+        </div>
+
+        <div class="info">
+            <span>MODE</span>
+            <span id="mode">NOT LOOKING</span>
+        </div>
+    </div>
+
+    <button id="startBtn" onclick="startLooking()">
+        ▶ START LOOKING
+    </button>
+
+    <button class="pause" id="pauseBtn" onclick="pauseLooking()" disabled>
+        Ⅱ PAUSE / STOP LOOKING
+    </button>
+
+    <button class="reset" id="resetBtn" onclick="resetSystem()">
+        ↻ RESET SYSTEM
+    </button>
+
+    <div class="footer">NIGHT SHIFT // POWER CONTROL</div>
+</div>
+
+<script>
+const MAX_BATTERY = 100;
+const DRAIN_PER_SECOND = 2;
+const RECHARGE_SECONDS = 10;
+
+let battery = MAX_BATTERY;
+let looking = false;
+let recharging = false;
+let rechargeEndsAt = 0;
+let lastUpdate = Date.now();
+
+const statusEl = document.getElementById("status");
+const percentageEl = document.getElementById("percentage");
+const fillEl = document.getElementById("fill");
+const powerStateEl = document.getElementById("powerState");
+const modeEl = document.getElementById("mode");
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+
+function startLooking() {
+    if (recharging || battery <= 0 || looking) return;
+
+    looking = true;
+    lastUpdate = Date.now();
+    updateDisplay();
+}
+
+function pauseLooking() {
+    if (!looking) return;
+
+    looking = false;
+    updateDisplay();
+}
+
+function resetSystem() {
+    battery = MAX_BATTERY;
+    looking = false;
+    recharging = false;
+    rechargeEndsAt = 0;
+    lastUpdate = Date.now();
+    updateDisplay();
+}
+
+function updateDisplay() {
+    percentageEl.textContent = Math.ceil(battery) + "%";
+    fillEl.style.width = battery + "%";
+
+    if (battery <= 20) {
+        fillEl.style.background = "#ff3434";
+    } else if (battery <= 50) {
+        fillEl.style.background = "#ffb52e";
+    } else {
+        fillEl.style.background = "#38ed66";
+    }
+
+    percentageEl.classList.toggle(
+        "warning",
+        battery <= 20 || recharging
+    );
+
+    startBtn.disabled = looking || recharging || battery <= 0;
+    pauseBtn.disabled = !looking;
+
+    if (recharging) {
+        const remaining = Math.max(
+            0,
+            (rechargeEndsAt - Date.now()) / 1000
+        );
+
+        statusEl.textContent =
+            "POWER DEPLETED — RECHARGING " +
+            remaining.toFixed(1) + "s";
+
+        statusEl.className = "status cooldown";
+        powerStateEl.textContent = "RECHARGING";
+        modeEl.textContent = "LOCKED";
+        startBtn.textContent = "⏳ RECHARGING...";
+    } else if (looking) {
+        statusEl.textContent = "⚠ ACTIVE WATCH — POWER DRAINING";
+        statusEl.className = "status";
+        powerStateEl.textContent = "DRAINING";
+        modeEl.textContent = "LOOKING OUT";
+        startBtn.textContent = "▶ LOOKING ACTIVE";
+    } else {
+        statusEl.textContent =
+            battery <= 20 ? "⚠ LOW POWER WARNING" :
+            battery < 100 ? "SYSTEM PAUSED" :
+            "SYSTEM STANDBY";
+
+        statusEl.className =
+            battery <= 20 ? "status warning" : "status";
+
+        powerStateEl.textContent =
+            battery <= 20 ? "LOW" :
+            battery < 100 ? "AVAILABLE" : "FULL";
+
+        modeEl.textContent = "NOT LOOKING";
+        startBtn.textContent = "▶ START LOOKING";
+    }
+}
+
+function tick() {
+    const now = Date.now();
+    const elapsed = Math.min((now - lastUpdate) / 1000, 1);
+    lastUpdate = now;
+
+    if (looking) {
+        battery -= DRAIN_PER_SECOND * elapsed;
+
+        if (battery <= 0) {
+            battery = 0;
+            looking = false;
+            recharging = true;
+            rechargeEndsAt = Date.now() +
+                RECHARGE_SECONDS * 1000;
+        }
+    }
+
+    if (recharging && now >= rechargeEndsAt) {
+        battery = MAX_BATTERY;
+        recharging = false;
+        rechargeEndsAt = 0;
+    }
+
+    updateDisplay();
+}
+
+setInterval(tick, 100);
+updateDisplay();
+</script>
+</body>
+</html>
